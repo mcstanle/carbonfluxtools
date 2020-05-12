@@ -205,7 +205,7 @@ def region_sf_iters(lon_idx, lat_idx, sf_arr, lon, lat):
 
         # compute monthly avg scale factors for OSSE it
         osse_avg_sf[it, :] = region_sf_ts(
-            lon_idx, lat_idx, sf_arr[it, :, :, :]
+            lon_idx, lat_idx, sf_arr[it, :, :, :], lon, lat
         )
 
     return osse_avg_sf

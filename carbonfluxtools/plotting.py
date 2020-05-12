@@ -12,6 +12,7 @@ Modified : May 12, 2020
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
+import numpy as np
 plt.style.use('ggplot')
 
 
@@ -99,4 +100,85 @@ def plot_region_dots(lon_pts, lat_pts, extent_lst,
     if save_loc:
         plt.savefig(save_loc)
 
+    plt.show()
+
+
+def bw_plot(sf_arr, opt_sf_arr, lon_idx, lat_idx,
+            title=None, save_loc=None):
+    """
+    Make a box-whisker plot for a single location
+
+    Parameters
+        sf_arr     (numpy arr) : {num OSSEs} x {num Months}
+        opt_sf_arr (numpy arr) : {months} x {lon} x {lat}
+        lon_idx    (int)       : index of longitude
+        lat_idx    (int)       : index of latitude
+        title      (str)       : title for plot
+        save_loc   (str)       : location where to save image
+
+    Note:
+    - expects to only be given Jan through Aug
+    """
+
+    plt.figure(figsize=(12.5, 7))
+
+    plt.boxplot(sf_arr[:, :8])
+
+    plt.scatter(np.arange(1, 9), opt_sf_arr[:8, lon_idx, lat_idx],
+                color='red', label='Optimal Scale Factors')
+
+    # labels
+    if title:
+        plt.title(title)
+    plt.xlabel('Months')
+    plt.ylabel('Scale Factors')
+
+    plt.xticks(np.arange(1, 10), [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug']
+    )
+
+    plt.legend(loc='best')
+    plt.tight_layout()
+
+    if save_loc:
+        plt.savefig(save_loc)
+    plt.show()
+
+
+def bw_region_plot(sf_arr, opt_sf_arr, 
+                   title=None, save_loc=None):
+    """
+    Make a box-whisker plot for a region
+
+    Parameters
+        sf_arr     (numpy arr) : {num OSSEs} x {num Months}
+        opt_sf_arr (numpy arr) : {months}
+        title      (str)       : title for plot
+        save_loc   (str)       : location where to save image
+    
+    Note:
+    - expects to only be given Jan through Aug
+    """
+    plt.figure(figsize=(12.5, 7))
+    plt.boxplot(sf_arr[:, :8])
+
+    plt.scatter(np.arange(1, 9), opt_sf_arr[:8],
+                color='red', label='Optimal Scale Factors')
+
+    # labels
+    if title:
+        plt.title(title)
+    plt.xlabel('Months')
+    plt.ylabel('Scale Factors')
+
+    plt.xticks(np.arange(1, 10), [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'
+        ]
+    )
+
+    plt.legend(loc='best')
+    plt.tight_layout()
+
+    if save_loc:
+        plt.savefig(save_loc)
     plt.show()

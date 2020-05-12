@@ -104,6 +104,56 @@ def read_geo_info(file_path):
         geo_dict = json.load(json_file)
 
     # pop out the "information" key \\ useless
-    return_dict = geo_dict.pop('information')
+    geo_dict.pop('information')
 
-    return return_dict
+    return geo_dict
+
+
+def get_single_loc_info(geo_dict, location_nm):
+    """
+    Retrieves point and extent information for a dictionary of the form
+    returned by read_geo_info
+
+    Parameters:
+        geo_dict    (dict) :
+        location_nm (str)  :
+
+    Returns:
+        tuple - (lon, lat) (tuple), extent (list)
+    """
+    # get lon/lat point
+    lon_lat = tuple(geo_dict['locations'][location_nm]['point'])
+
+    # get the extent
+    extent_lst = geo_dict['locations'][location_nm]['extent']
+
+    return lon_lat, extent_lst
+
+
+def get_regional_info(geo_dict, region_nm):
+    """
+    Retrieves point and extent information for a dictionary of the form
+    returned by read_geo_info
+
+    Parameters:
+        geo_dict  (dict) :
+        region_nm (str)  :
+
+    Returns:
+        tuple - lon_pts, lat_pts
+    """
+    # get the reference location name
+    ref_loc = geo_dict['regions'][region_nm]['reference_point']
+
+    # get the information for the above location
+    pt, ext = get_single_loc_info(geo_dict=geo_dict, location_nm=ref_loc)
+
+    # get lat/lon perturb values
+    lon_perturb = geo_dict['regions'][region_nm]['lon_perturb']
+    lat_perturb = geo_dict['regions'][region_nm]['lat_perturb']
+
+    # create the nump arrays for the grid
+    lon_pts = np.arange(lon_perturb[0], lon_perturb[1]) + pt[0]
+    lat_pts = np.arange(lat_perturb[0], lat_perturb[1]) + pt[1]
+
+    return lon_pts, lat_pts
