@@ -11,6 +11,7 @@ Modified : May 12, 2020
 ================================================================================
 """
 from glob import glob
+import json
 import numpy as np
 import PseudoNetCDF as pnc
 
@@ -86,3 +87,23 @@ def read_opt_sfs(file_path):
     )
 
     return opt_sf
+
+
+def read_geo_info(file_path):
+    """
+    Reads geographic point and region infomation from a json containing
+    individual locations and regions.
+
+    Parameters:
+        file_path (str) : path to the json file
+
+    Return:
+        dictionary with geographic info
+    """
+    with open(file_path) as json_file:
+        geo_dict = json.load(json_file)
+
+    # pop out the "information" key \\ useless
+    geo_dict.pop('information')
+
+    return geo_dict
