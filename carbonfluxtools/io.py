@@ -36,7 +36,7 @@ def read_sf_objs(base_df_dir, sf_prefix):
     - all scale factor files are assumed to have the same prefix form
     """
     # obtain the scale factor file names (NOTE: file order doesn't matter)
-    file_names = glob(base_df_dir + '/' + sf_prefix)
+    file_names = glob(base_df_dir + '/' + sf_prefix + '*')
 
     return [pnc.pncopen(fn, format='bpch') for fn in file_names]
 
@@ -104,6 +104,6 @@ def read_geo_info(file_path):
         geo_dict = json.load(json_file)
 
     # pop out the "information" key \\ useless
-    geo_dict.pop('information')
+    return_dict = geo_dict.pop('information')
 
-    return geo_dict
+    return return_dict
