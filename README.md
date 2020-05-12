@@ -11,9 +11,13 @@ To install, clone this repository and run
 There are currently two available sub-modules
 1. `carbonfluxtools.io`
 2. `carbonfluxtools.computation`
+3. `carbonfluxtools.plotting`
 
 In `carbonfluxtools.io`, we find functions for reading in `bpch` files, GOSAT
 observations, and inversion output.
 
 In `carbonfluxtools.computation`, we find function for computing posterior flux
 fields and regional scale factors or fluxes.
+
+In `carbonfluxtools.plotting`, there are a few functions for making geographic
+plots to see where things are.
