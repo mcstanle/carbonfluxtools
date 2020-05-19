@@ -306,3 +306,169 @@ def open_netcdf_flux(file_path, co2_field_nm='CO2_SRCE_CO2bf'):
     f_in.close()
 
     return co2_arr, lon, lat
+
+
+def read_flux_files(
+    file_dir,
+    file_pre,
+    tracer_fp=None,
+    diag_fp=None
+):
+    """
+    Since scale factors and results are examined on a monthly time-scale, raw
+    3hr flux files need to be processed to produce a monthly flux for each grid
+    point.
+
+    Assumptions -
+    1. flux files are bpch files
+
+    Parameters:
+        file_dir  (str) : directory where files are stored
+        file_pre  (str) : prefix for flux files, e.g. nep.geos.4x5.2010
+        tracer_fp (str) : path to relevant tracer file
+                          (if none, will look in file_dir)
+        diag_fp   (str) : path to relevant diag file
+                          (if none, will look in file_dir)
+
+    Returns:
+        xbpch object which will contain a flux of interest in additiona to
+        dimension parameters (e.g. lon/lat/lev)
+    """
+    if tracer_fp:
+        tracer_fp_1 = tracer_fp
+    else:
+        tracer_fp_1 = file_dir + '/tracerinfo.dat'
+
+    if diag_fp:
+        diag_fp_1 = diag_fp
+    else:
+        diag_fp_1 = file_dir + '/diaginfo.dat'
+
+    # find the flux file names
+    file_names = sorted(
+        [file_nm for file_nm in glob(file_dir + '/%s*' % file_pre)]
+    )
+
+    assert len(file_names) > 0
+
+    # read in all the prior fluxes
+    fluxes = xbpch.open_mfbpchdataset(
+        file_names,
+        dask=True,
+        tracerinfo_file=tracer_fp_1,
+        diaginfo_file=diag_fp_1
+    )
+
+    return fluxes
+
+
+def find_time_idxs(start, end, fluxes):
+    """
+    Find the numpy arr indices between two month indexes (counting from 0)
+
+    Parameters:
+        start  (int)       : start month index
+        end    (int)       : end month index
+        fluxes (xbpch obj) : i.e. output of read_flux_files
+
+    Returns:
+        numpy array with time indices
+    """
+    assert start < end
+
+    if end > 12:
+        less = np.where(
+            fluxes.time.values >= np.datetime64('1985-%i-01' % start)
+        )[0]
+        geq = np.where(
+            fluxes.time.values >= np.datetime64('1985-%i-01' % start)
+        )[0]
+    elif start > 9:
+        less = np.where(
+            fluxes.time.values < np.datetime64('1985-%i-01' % end)
+        )[0]
+        geq = np.where(
+            fluxes.time.values >= np.datetime64('1985-%i-01' % start)
+        )[0]
+    elif end > 9:
+        less = np.where(
+            fluxes.time.values < np.datetime64('1985-%i-01' % end)
+        )[0]
+        geq = np.where(
+            fluxes.time.values >= np.datetime64('1985-0%i-01' % start)
+        )[0]
+    else:
+        less = np.where(
+            fluxes.time.values < np.datetime64('1985-0%i-01' % end)
+        )[0]
+        geq = np.where(
+            fluxes.time.values >= np.datetime64('1985-0%i-01' % start)
+        )[0]
+
+    # find the intersection between the above
+    time_idxs = np.intersect1d(geq, less)
+
+    return time_idxs
+
+
+def find_month_idxs(fluxes):
+    """
+    Find the indices for each month for a given xbpch obj.
+
+    Parameters:
+        fluxes (xbpch object) : i.e. output of read_flux_files
+
+    Returns:
+        dictionary of month abbreviations with numpy array values
+
+    NOTE:
+    - this function can only handle a single year.
+    """
+    # find the month indices
+    month_idxs = {
+        'jan': None, 'feb': None, 'mar': None,
+        'apr': None, 'may': None, 'june': None,
+        'jul': None, 'aug': None, 'sep': None,
+        'oct': None, 'nov': None, 'dec': None
+    }
+
+    for month_idx, month in enumerate(month_idxs.keys()):
+        # find the start and end values
+        start_val = month_idx + 1
+        end_val = month_idx + 2
+
+        # find the time indices
+        month_idxs[month] = find_time_idxs(
+            start=start_val,
+            end=end_val,
+            fluxes=fluxes
+        )
+
+    return {
+        key: value for key, value in month_idxs.items() if value is not None
+    }
+
+
+def read_cfn_files(file_dir):
+    """
+    Read the cost function output files from GEOS-Chem Adjoint Runs.
+
+    These files should be organized in one directory to work with this function
+
+    Parameters:
+        file_dir (str) :
+
+    Returns:
+        float - the cost function evaluation
+    """
+    # get file names for cost functions
+    cfn_fp = glob(file_dir + '/cfn*')
+
+    cfn = []
+    for i, fp in enumerate(cfn_fp):
+        with open(fp, 'r') as f:
+            cfn.append(float(f.readlines()[0].replace(
+                ' %i ' % (i + 1), ''
+            ).replace(' ', '').replace('\n', '')))
+
+    return cfn

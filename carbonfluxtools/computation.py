@@ -5,11 +5,12 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 12, 2020
+Modified : May 18, 2020
 
 ================================================================================
 """
 from area import area
+from carbonfluxtools import io
 import numpy as np
 
 
@@ -209,3 +210,65 @@ def region_sf_iters(lon_idx, lat_idx, sf_arr, lon, lat):
         )
 
     return osse_avg_sf
+
+
+def create_monthly_flux(
+    flux_xbpch,
+    flux_var_nm,
+    agg_type='mean'
+):
+    """
+    Given an xbpch object of fluxes, create an aggregated monthly form of the
+    fluxes.
+
+    Parameters:
+        flux_xbpch  (xbpch) : output from io.read_flux_files
+        flux_var_nm (str)   : name of flux variable in the bpch file
+        agg_type    (str)   : specification as to the aggregatation type
+
+    Returns:
+        numpy array with monthly aggregated values and lon/lat
+
+    NOTE:
+    - currently supports mean and sum
+    - fluxes are expected to have form {time}x{lon}x{lat}
+    """
+    # create monthly indices
+    month_idxs = io.find_month_idxs(fluxes=flux_xbpch)
+
+    fluxes_agg_raw = []
+
+    for month, idxs in month_idxs.items():
+
+        if agg_type == 'mean':
+            fluxes_agg_raw.append(
+                flux_xbpch[flux_var_nm].values[idxs, :, :].mean(axis=0)
+            )
+
+        elif agg_type == 'sum':
+            fluxes_agg_raw.append(
+                flux_xbpch[flux_var_nm].values[idxs, :, :].sum(axis=0)
+            )
+        else:
+            raise ValueError
+
+    # concatenate the above together
+    fluxes_mean = np.stack(fluxes_agg_raw)
+
+    return fluxes_mean, flux_xbpch['lon'].values, flux_xbpch['lat'].values
+
+
+def rmse_total_global():
+    """
+    Finds the RMSE over all months and all grid points. Uses actual average
+    flux values.
+
+    Parameters:
+        prior_flux (numpy arr) : processed monthly prior fluxes
+        true_flux  (numpy arr) : processed monthly true fluxes
+        sfs        (numpy arr) : obtained scale factors
+
+    Returns:
+        float
+    """
+    pass
