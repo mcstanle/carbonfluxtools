@@ -6,7 +6,7 @@ A collection of IO related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 15, 2020
+Modified : May 19, 2020
 
 ================================================================================
 """
@@ -63,8 +63,16 @@ def create_sf_arr(list_of_sf_objs, var_oi='IJ-EMS-$_CO2bal'):
     extr_arrs = [sf_i.variables[var_oi].array()[0, :, :, :]
                  for sf_i in list_of_sf_objs]
 
+    # make sure that longitude comes before latitude
+    extr_arrs_ll = []
+    for sf_i in extr_arrs:
+        if sf_i.shape[1] != 72:
+            extr_arrs_ll.append(np.swapaxes(sf_i, axis1=1, axis2=2))
+        else:
+            extr_arrs_ll.append(sf_i)
+
     # stack the above
-    stacked_arrs = np.stack(extr_arrs, axis=0)
+    stacked_arrs = np.stack(extr_arrs_ll, axis=0)
 
     # obtain longitude and latitude
     lon = list_of_sf_objs[0].variables['longitude'].array()

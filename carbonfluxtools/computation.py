@@ -5,7 +5,7 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 18, 2020
+Modified : May 19, 2020
 
 ================================================================================
 """
@@ -76,9 +76,7 @@ def subgrid_rect_obj(lon_llc, lat_llc):
     }
 
 
-def w_avg_sf(sfs_arr, lon, lat, lon_bounds, lat_bounds, month,
-             var_oi='IJ-EMS-$_CO2bal'
-             ):
+def w_avg_sf(sfs_arr, lon, lat, lon_bounds, lat_bounds, month):
     """
     Find the weighted avg scale factor taking the curvature of the earth
     into account.
@@ -90,21 +88,20 @@ def w_avg_sf(sfs_arr, lon, lat, lon_bounds, lat_bounds, month,
         lon_bounds (tuple)       : eastern oriented
         lat_bounds (tuple)       : northern oriented
         month      (int)         : the month of interest
-        var_oi     (str)         : variable of interest in sfs
 
     Returns:
         weighted avg of scale factors (float)
 
     NOTES:
-    - the variable of interest in sfs is assumed to have shape (1, *, 46, 72)
+    - the variable of interest in sfs is assumed to have shape (1, *, 72, 46)
       where * is the number of months
     - the bounds for lon/lat are inclusive
     - orients each grid box so that the scale factor is in the center
     """
     # test array dimensions
     assert len(sfs_arr.shape) == 4
-    assert sfs_arr.shape[2] == 46
-    assert sfs_arr.shape[3] == 72
+    assert sfs_arr.shape[2] == 72
+    assert sfs_arr.shape[3] == 46
 
     # find the lon/lat indices that correspond to the the bounds of interest
     lon_lb = np.where(lon >= lon_bounds[0])
@@ -145,6 +142,88 @@ def w_avg_sf(sfs_arr, lon, lat, lon_bounds, lat_bounds, month,
     weighted_sfs = np.array(raw_weighted_sfs) / tot_area
 
     return weighted_sfs.sum()
+
+
+def w_avg_flux(
+    flux_arr, ocean_idxs,
+    lon, lat,
+    lon_bounds, lat_bounds,
+    month
+):
+    """
+    Find the weighted avg flux for one time slice. The weighted average only
+    takes land grid cells into account, i.e. it skips the ocean indices
+
+    Parameters:
+        flux_arr   (numpy array) : contains sfs over lon/lat
+        ocean_idxs (numpy array) : indices of ocean grid cells when
+                                   flattening a 72x46 array
+        lon        (numpy array) : longitudes
+        lat        (numpy array) : latitudes
+        lon_bounds (tuple)       : eastern oriented
+        lat_bounds (tuple)       : northern oriented
+        month      (int)         : the month of interest
+
+    Returns:
+        weighted avg of fluxes (float)
+
+    NOTES:
+    - the variable of interest in sfs is assumed to have shape (*, 72, 46)
+      where * is the number of months
+    - the bounds for lon/lat are inclusive
+    - orients each grid box so that the scale factor is in the center
+    """
+    # test array dimensions
+    assert len(flux_arr.shape) == 3
+    assert flux_arr.shape[1] == 72
+    assert flux_arr.shape[2] == 46
+
+    # find the lon/lat indices that correspond to the the bounds of interest
+    lon_lb = np.where(lon >= lon_bounds[0])
+    lon_ub = np.where(lon <= lon_bounds[1])
+    lon_idxs = np.intersect1d(lon_lb, lon_ub)
+
+    lat_lb = np.where(lat >= lat_bounds[0])
+    lat_ub = np.where(lat <= lat_bounds[1])
+    lat_idxs = np.intersect1d(lat_lb, lat_ub)
+
+    # make reference array for lat/lon indices
+    ref_arr = np.arange(46*72).reshape((72, 46))
+
+    # compute areas
+    areas = []
+    raw_weighted_flux = []
+    for lat_idx in lat_idxs:
+        for lon_idx in lon_idxs:
+
+            # check if reference array index is in the ocean mask
+            if ref_arr[lon_idx, lat_idx] in ocean_idxs:
+                continue
+
+            # get the lower right corner endpoints of the box
+            lon_lrc = lon[lon_idx] - 2.5
+            lat_lrc = lat[lat_idx] - 2
+
+            # find area
+            grid_area = area(subgrid_rect_obj(lon_lrc, lat_lrc))
+
+            # get the fluxes
+            grid_flux = flux_arr[month, lon_idx, lat_idx]
+
+            # compute the weighted fluxes
+            w_flux = grid_area * grid_flux
+
+            # store data
+            areas.append(grid_area)
+            raw_weighted_flux.append(w_flux)
+
+    # find the total area
+    tot_area = np.array(areas).sum()
+
+    # divide all weighted scale factors by total area
+    weighted_flux = np.array(raw_weighted_flux) / tot_area
+
+    return weighted_flux.sum()
 
 
 def region_sf_ts(lon_idx, lat_idx, sf_arr, lon, lat):
@@ -258,17 +337,67 @@ def create_monthly_flux(
     return fluxes_mean, flux_xbpch['lon'].values, flux_xbpch['lat'].values
 
 
-def rmse_total_global():
+def posterior_sf_compute(prior_flux, sfs):
     """
-    Finds the RMSE over all months and all grid points. Uses actual average
+    Given prior and optimized scale factors, find the posterior scale factors.
+
+    Parameters:
+        prior_flux (numpy arr) : processed monthly prior fluxes Mxlonxlat
+        sfs        (numpy arr) : obtained scale factors Mxlonxlat
+
+    Returns:
+        numpy arr (Mxlonxlat)
+
+    NOTE:
+    - keep the dimensions in mind because they can matter when flattening to
+      find aggregated errors and things of that sort
+    """
+    assert prior_flux.shape[0] == sfs.shape[0]
+    assert prior_flux.shape[1] == 72
+    assert sfs.shape[1] == 72
+
+    return prior_flux * sfs
+
+
+def rmse_total_global(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
+    """
+    Finds the RMSE over all months and land grid points. Uses actual average
     flux values.
 
     Parameters:
         prior_flux (numpy arr) : processed monthly prior fluxes
         true_flux  (numpy arr) : processed monthly true fluxes
         sfs        (numpy arr) : obtained scale factors
+        ocean_mask (numpy arr) : indices of ocean grid cells
+        lon        (numpy arr) : longitude array (72)
+        lat        (numpy arr) : longitude array (46)
 
     Returns:
         float
     """
-    pass
+    assert prior_flux.shape[0] == true_flux.shape[0]
+
+    # find the posterior flux arr
+    post = posterior_sf_compute(
+        prior_flux=prior_flux,
+        sfs=sfs
+    )
+
+    # find the gridwise squared error
+    gw_sq_err = np.square(post - true_flux)
+
+    # sum over months
+    gw_sq_err = gw_sq_err.sum(axis=0)
+
+    # find the weighted avg error
+    weighted_error = w_avg_flux(
+        flux_arr=gw_sq_err[np.newaxis, :, :],
+        ocean_idxs=ocean_mask,
+        lon=lon,
+        lat=lat,
+        lon_bounds=(-180, 180),
+        lat_bounds=(-90, 90),
+        month=0
+    )
+
+    return np.sqrt(weighted_error)
