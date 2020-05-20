@@ -126,7 +126,7 @@ def w_avg_sf(sfs_arr, lon, lat, lon_bounds, lat_bounds, month):
             grid_area = area(subgrid_rect_obj(lon_lrc, lat_lrc))
 
             # get the scale factor
-            grid_sf = sfs_arr[0, month, lat_idx, lon_idx]
+            grid_sf = sfs_arr[0, month, lon_idx, lat_idx]
 
             # compute the weighted scale factor
             w_sf = grid_area * grid_sf
@@ -233,15 +233,15 @@ def region_sf_ts(lon_idx, lat_idx, sf_arr, lon, lat):
     Parameters:
         lon_idx (numpy arr) : array of longitude indices for region oi
         lat_idx (numpy arr) : array of latitude indices for region oi
-        sf_arr  (numpy arr) : global scale factors dim - T x 46 x 72
+        sf_arr  (numpy arr) : global scale factors dim - T x 72 x 46
         lon     (numpy arr) : array of longitudes
         lat     (numpy arr) : array of latitudes
 
     Returns:
         1d numpy array, one value per time in first dimension of sf_arr
     """
-    assert sf_arr.shape[1] == 46
-    assert sf_arr.shape[2] == 72
+    assert sf_arr.shape[1] == 72
+    assert sf_arr.shape[2] == 46
 
     # determine bounds of region
     lon_bds = (lon[lon_idx[0]], lon[lon_idx[-1]])
@@ -271,7 +271,7 @@ def region_sf_iters(lon_idx, lat_idx, sf_arr, lon, lat):
     Parameters:
         lon_idx (numpy arr) : array of longitude indices for region oi
         lat_idx (numpy arr) : array of latitude indices for region oi
-        sf_arr  (numpy arr) : global scale factors dim - M x T x 46 x 72
+        sf_arr  (numpy arr) : global scale factors dim - M x T x 72 x 46
                               M number of OSSEs, T number of months
         lon     (numpy arr) : array of longitudes
         lat     (numpy arr) : array of latitudes

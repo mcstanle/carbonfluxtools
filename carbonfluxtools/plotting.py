@@ -155,7 +155,7 @@ def bw_region_plot(sf_arr, opt_sf_arr,
         opt_sf_arr (numpy arr) : {months}
         title      (str)       : title for plot
         save_loc   (str)       : location where to save image
-    
+
     Note:
     - expects to only be given Jan through Aug
     """
