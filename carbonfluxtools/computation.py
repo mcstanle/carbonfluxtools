@@ -5,7 +5,7 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 19, 2020
+Modified : May 20, 2020
 
 ================================================================================
 """
@@ -374,6 +374,10 @@ def rmse_total_global(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
 
     Returns:
         float
+
+    NOTE:
+    - prior_flux/true_flux/sfs have dim (M, 72, 46)
+    - ocean_mask has dim (N,), where N is number of ocean grid points
     """
     assert prior_flux.shape[0] == true_flux.shape[0]
 
@@ -401,3 +405,69 @@ def rmse_total_global(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
     )
 
     return np.sqrt(weighted_error)
+
+
+def rmse_month_global(prior_flux, true_flux, sfs, ocean_mask, lon, lat, month):
+    """
+    Finds the RMSE over input month and land grid points. Uses actual average
+    flux values.
+
+    Parameters:
+        prior_flux (numpy arr) : processed monthly prior fluxes
+        true_flux  (numpy arr) : processed monthly true fluxes
+        sfs        (numpy arr) : obtained scale factors
+        ocean_mask (numpy arr) : indices of ocean grid cells
+        lon        (numpy arr) : longitude array (72)
+        lat        (numpy arr) : longitude array (46)
+        month      (int)       : month of interest
+
+    Returns:
+        float
+
+    NOTE:
+    - prior_flux/true_flux/sfs have dim (M, 72, 46)
+    - ocean_mask has dim (N,), where N is number of ocean grid points
+    """
+    assert prior_flux.shape[0] == true_flux.shape[0]
+
+    # find the posterior flux arr
+    post = posterior_sf_compute(
+        prior_flux=prior_flux,
+        sfs=sfs
+    )
+
+    # find the gridwise squared error
+    gw_sq_err = np.square(post - true_flux)
+
+    # find the weighted avg error
+    weighted_error = w_avg_flux(
+        flux_arr=gw_sq_err,
+        ocean_idxs=ocean_mask,
+        lon=lon,
+        lat=lat,
+        lon_bounds=(-180, 180),
+        lat_bounds=(-90, 90),
+        month=month
+    )
+
+    return np.sqrt(weighted_error)
+
+
+def rmse_all_months(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
+    """
+    Find global RMSE for each individual month of a given scale factor set.
+    """
+    monthly_rmse = [None] * sfs.shape[0]
+
+    for month_idx in range(sfs.shape[0]):
+        monthly_rmse[month_idx] = rmse_month_global(
+            prior_flux=prior_flux,
+            true_flux=true_flux,
+            sfs=sfs,
+            ocean_mask=ocean_mask,
+            lon=lon,
+            lat=lat,
+            month=month_idx
+        )
+
+    return monthly_rmse
