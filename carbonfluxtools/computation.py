@@ -226,6 +226,72 @@ def w_avg_flux(
     return weighted_flux.sum()
 
 
+def w_avg_flux_month(
+    flux_arr, ocean_idxs,
+    lon, lat
+):
+    """
+    Find the weighted avg flux for one time slice. This function differs from
+    w_avg_flux_month in that the full scale factor and flux arrays do not have
+    to be provided. This avoids a lot of having to pass indices around.
+
+    Parameters:
+        flux_arr   (numpy array) : contains sfs over lon/lat
+        ocean_idxs (numpy array) : indices of ocean grid cells when
+                                   flattening a 72x46 array
+        lon        (numpy array) : longitudes
+        lat        (numpy array) : latitudes
+
+    Returns:
+        weighted avg of fluxes (float)
+
+    NOTES:
+    - the variable of interest in flux_arr is assumed to have shape (72, 46)
+    - orients each grid box so that the scale factor is in the center
+    """
+    # test array dimensions
+    assert flux_arr.shape[0] == 72
+    assert flux_arr.shape[1] == 46
+
+    # make reference array for lat/lon indices
+    ref_arr = np.arange(46*72).reshape((72, 46))
+
+    # compute areas
+    areas = []
+    raw_weighted_flux = []
+    for lat_idx in lat:
+        for lon_idx in lon:
+
+            # check if reference array index is in the ocean mask
+            if ref_arr[lon_idx, lat_idx] in ocean_idxs:
+                continue
+
+            # get the lower right corner endpoints of the box
+            lon_lrc = lon[lon_idx] - 2.5
+            lat_lrc = lat[lat_idx] - 2
+
+            # find area
+            grid_area = area(subgrid_rect_obj(lon_lrc, lat_lrc))
+
+            # get the fluxes
+            grid_flux = flux_arr[lon_idx, lat_idx]
+
+            # compute the weighted fluxes
+            w_flux = grid_area * grid_flux
+
+            # store data
+            areas.append(grid_area)
+            raw_weighted_flux.append(w_flux)
+
+    # find the total area
+    tot_area = np.array(areas).sum()
+
+    # divide all weighted scale factors by total area
+    weighted_flux = np.array(raw_weighted_flux) / tot_area
+
+    return weighted_flux.sum()
+
+
 def region_sf_ts(lon_idx, lat_idx, sf_arr, lon, lat):
     """
     Given lat/lon bounds, find average scale factors over some time interval

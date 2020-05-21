@@ -327,6 +327,8 @@ def read_flux_files(
     3hr flux files need to be processed to produce a monthly flux for each grid
     point.
 
+    Array objects within have 72x46 dimensions
+
     Assumptions -
     1. flux files are bpch files
 
@@ -419,12 +421,13 @@ def find_time_idxs(start, end, fluxes):
     return time_idxs
 
 
-def find_month_idxs(fluxes):
+def find_month_idxs(fluxes, month_list):
     """
     Find the indices for each month for a given xbpch obj.
 
     Parameters:
-        fluxes (xbpch object) : i.e. output of read_flux_files
+        fluxes     (xbpch object) : i.e. output of read_flux_files
+        month_list (list)         : list of months to be returned in dict
 
     Returns:
         dictionary of month abbreviations with numpy array values
@@ -452,8 +455,14 @@ def find_month_idxs(fluxes):
             fluxes=fluxes
         )
 
-    return {
+    # filter out empty values
+    month_dict = {
         key: value for key, value in month_idxs.items() if value is not None
+    }
+
+    # only keep months of interest
+    month_dict = {
+        key: value for key, value in month_dict.items() if key in month_list
     }
 
 
