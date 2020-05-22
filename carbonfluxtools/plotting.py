@@ -12,6 +12,7 @@ Modified : May 12, 2020
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
+from matplotlib import colors
 import numpy as np
 plt.style.use('ggplot')
 
@@ -145,7 +146,7 @@ def bw_plot(sf_arr, opt_sf_arr, lon_idx, lat_idx,
     plt.show()
 
 
-def bw_region_plot(sf_arr, opt_sf_arr, 
+def bw_region_plot(sf_arr, opt_sf_arr,
                    title=None, save_loc=None):
     """
     Make a box-whisker plot for a region
@@ -182,3 +183,36 @@ def bw_region_plot(sf_arr, opt_sf_arr,
     if save_loc:
         plt.savefig(save_loc)
     plt.show()
+
+
+def plot_month_sfs(sf_arr, lon, lat, write_loc=None):
+    """
+    Plot a global heatmap of scale factors for a single month
+
+    Parameters:
+        sf_arr    (np arr) : {lon} x {lat} array
+        lon       (np arr) :
+        lat       (np arr) :
+        write_loc (str)    : file path to which plot should be written
+
+    Returns:
+        None - but write plot to file
+    """
+    assert sf_arr.shape[0] == 72
+    assert sf_arr.shape[1] == 46
+
+    fig = plt.figure(figsize=(12.5, 6))
+    norm = colors.DivergingNorm(vcenter=1)
+
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree(), aspect='auto')
+    contour = ax.contourf(
+        lon, lat, sf_arr.T, levels=100,
+        transform=ccrs.PlateCarree(), cmap='bwr', norm=norm
+    )
+    fig.colorbar(contour, ax=ax, orientation='vertical', extend='both')
+    ax.add_feature(cfeature.COASTLINE)
+
+    if write_loc:
+        plt.savefig(write_loc)
+    else:
+        plt.show()

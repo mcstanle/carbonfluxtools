@@ -455,15 +455,12 @@ def find_month_idxs(fluxes, month_list):
             fluxes=fluxes
         )
 
-    # filter out empty values
-    month_dict = {
-        key: value for key, value in month_idxs.items() if value is not None
-    }
-
     # only keep months of interest
     month_dict = {
-        key: value for key, value in month_dict.items() if key in month_list
+        key: value for key, value in month_idxs.items() if key in month_list
     }
+
+    return month_dict
 
 
 def read_cfn_files(file_dir):

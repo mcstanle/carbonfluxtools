@@ -259,8 +259,8 @@ def w_avg_flux_month(
     # compute areas
     areas = []
     raw_weighted_flux = []
-    for lat_idx in lat:
-        for lon_idx in lon:
+    for lat_idx in np.arange(len(lat)):
+        for lon_idx in np.arange(len(lon)):
 
             # check if reference array index is in the ocean mask
             if ref_arr[lon_idx, lat_idx] in ocean_idxs:
