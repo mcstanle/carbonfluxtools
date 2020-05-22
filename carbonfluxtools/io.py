@@ -438,7 +438,7 @@ def find_month_idxs(fluxes, month_list):
     # find the month indices
     month_idxs = {
         'jan': None, 'feb': None, 'mar': None,
-        'apr': None, 'may': None, 'june': None,
+        'apr': None, 'may': None, 'jun': None,
         'jul': None, 'aug': None, 'sep': None,
         'oct': None, 'nov': None, 'dec': None
     }
