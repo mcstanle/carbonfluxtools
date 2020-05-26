@@ -104,29 +104,51 @@ def plot_region_dots(lon_pts, lat_pts, extent_lst,
     plt.show()
 
 
-def bw_plot(sf_arr, opt_sf_arr, lon_idx, lat_idx,
-            title=None, save_loc=None):
+def bw_plot(
+    sf_arr, opt_sf_arr, lon_idx, lat_idx,
+    num_obs=None,
+    num_months=8,
+    title=None,
+    save_loc=None,
+    text_h_offset=0.5,
+    text_v_offset=0.3
+):
     """
     Make a box-whisker plot for a single location
 
     Parameters
-        sf_arr     (numpy arr) : {num OSSEs} x {num Months}
-        opt_sf_arr (numpy arr) : {months} x {lon} x {lat}
-        lon_idx    (int)       : index of longitude
-        lat_idx    (int)       : index of latitude
-        title      (str)       : title for plot
-        save_loc   (str)       : location where to save image
+        sf_arr        (np arr) : {num OSSEs} x {num Months}
+        opt_sf_arr    (np arr) : {months} x {lon} x {lat}
+        lon_idx       (int)    : index of longitude
+        lat_idx       (int)    : index of latitude
+        num_obs       (np arr) : array of number of observations per month
+        num_months    (int)    : number of months to plot
+        title         (str)    : title for plot
+        save_loc      (str)    : location where to save image
+        text_h_offset (float)  : count labels - horizonal offset
+        text_v_offset (float)  : count labels - vertical offset
 
     Note:
     - expects to only be given Jan through Aug
     """
+    MONTH_LIST = [
+        'Jan', 'Feb', 'Mar', 'Apr',
+        'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'
+    ]
 
     plt.figure(figsize=(12.5, 7))
 
-    plt.boxplot(sf_arr[:, :8])
+    plt.boxplot(sf_arr[:, :num_months])
 
-    plt.scatter(np.arange(1, 9), opt_sf_arr[:8, lon_idx, lat_idx],
-                color='red', label='Optimal Scale Factors')
+    # find the mean scale factors for each month
+    sf_mean = sf_arr[:, :num_months].mean(axis=0)
+
+    plt.scatter(
+        np.arange(1, num_months + 1),
+        opt_sf_arr[:num_months, lon_idx, lat_idx],
+        color='red', label='Optimal Scale Factors'
+    )
 
     # labels
     if title:
@@ -134,9 +156,17 @@ def bw_plot(sf_arr, opt_sf_arr, lon_idx, lat_idx,
     plt.xlabel('Months')
     plt.ylabel('Scale Factors')
 
-    plt.xticks(np.arange(1, 10), [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug']
-    )
+    plt.xticks(np.arange(1, 10), MONTH_LIST[:num_months])
+
+    if num_obs is not None:
+
+        # add the text with the observation count
+        for month_idx in range(num_months):
+            plt.text(
+                x=month_idx+1 + text_h_offset,
+                y=sf_mean[month_idx] + text_v_offset,
+                s=str(num_obs[month_idx])
+            )
 
     plt.legend(loc='best')
     plt.tight_layout()
@@ -146,24 +176,43 @@ def bw_plot(sf_arr, opt_sf_arr, lon_idx, lat_idx,
     plt.show()
 
 
-def bw_region_plot(sf_arr, opt_sf_arr,
-                   title=None, save_loc=None):
+def bw_region_plot(
+    sf_arr, opt_sf_arr,
+    num_obs=None,
+    num_months=8,
+    title=None, save_loc=None,
+    text_h_offset=0.5,
+    text_v_offset=0.3
+):
     """
     Make a box-whisker plot for a region
 
     Parameters
-        sf_arr     (numpy arr) : {num OSSEs} x {num Months}
-        opt_sf_arr (numpy arr) : {months}
-        title      (str)       : title for plot
-        save_loc   (str)       : location where to save image
+        sf_arr     (np arr)   : {num OSSEs} x {num Months}
+        opt_sf_arr (np arr)   : {months}
+        num_obs    (np arr)   : array of number of observations per month
+        num_months (int)      : number of months to plot
+        title      (str)      : title for plot
+        save_loc   (str)      : location where to save image
+        text_h_offset (float) : count labels - horizonal offset
+        text_v_offset (float) : count labels - vertical offset
 
     Note:
     - expects to only be given Jan through Aug
     """
-    plt.figure(figsize=(12.5, 7))
-    plt.boxplot(sf_arr[:, :8])
+    MONTH_LIST = [
+        'Jan', 'Feb', 'Mar', 'Apr',
+        'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'
+    ]
 
-    plt.scatter(np.arange(1, 9), opt_sf_arr[:8],
+    plt.figure(figsize=(12.5, 7))
+    plt.boxplot(sf_arr[:, :num_months])
+
+    # find the mean scale factors for each month
+    sf_mean = sf_arr[:, :num_months].mean(axis=0)
+
+    plt.scatter(np.arange(1, num_months+1), opt_sf_arr[:num_months],
                 color='red', label='Optimal Scale Factors')
 
     # labels
@@ -172,10 +221,17 @@ def bw_region_plot(sf_arr, opt_sf_arr,
     plt.xlabel('Months')
     plt.ylabel('Scale Factors')
 
-    plt.xticks(np.arange(1, 10), [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'
-        ]
-    )
+    plt.xticks(np.arange(1, num_months+2), MONTH_LIST[:num_months])
+
+    if num_obs is not None:
+
+        # add the text with the observation count
+        for month_idx in range(num_months):
+            plt.text(
+                x=month_idx+1 + text_h_offset,
+                y=sf_mean[month_idx] + text_v_offset,
+                s=str(num_obs[month_idx])
+            )
 
     plt.legend(loc='best')
     plt.tight_layout()

@@ -5,7 +5,7 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 20, 2020
+Modified : May 22, 2020
 
 ================================================================================
 """
@@ -16,12 +16,12 @@ import numpy as np
 
 def find_bias(sf_stack, opt_sf):
     """
-    Finds difference between avg(sf) and optimal sf for one 46x72 grid
+    Finds difference between avg(sf) and optimal sf for one 72x46 grid
 
     Parameters:
-        sf_stack (numpy array) : nxMx46x72 array with inverted scale factors
+        sf_stack (numpy array) : nxMx72x46 array with inverted scale factors
                                  (n=number OSSEs and M=number of months)
-        opt_sf   (numpy array) : Mx46x72 optimal scale factor array
+        opt_sf   (numpy array) : Mx72x46 optimal scale factor array
 
     Returns:
         Mx46x76 numpy array of E(sf) - opt_sf
@@ -29,21 +29,14 @@ def find_bias(sf_stack, opt_sf):
     NOTE:
      - we assume that the 0th index of sf_stack is the OSSE iterations
     """
-    assert sf_stack.shape[1] == opt_sf.shape[0]
-
-    # make sure the dimensions are correct
-    if opt_sf.shape[1] != 46:
-
-        # the only problem equiped to handle is lat/lon switch
-        opt_sf_proc = np.swapaxes(opt_sf, axis1=1, axis2=2)
-
-    else:
-        opt_sf_proc = opt_sf.copy()
+    assert sf_stack.shape[1] == opt_sf.shape[0]  # same number of months
+    assert sf_stack.shape[2] == 72
+    assert opt_sf.shape[1] == 72
 
     # find mean of the given stack of sf draws
     sf_stack_avg = sf_stack.mean(axis=0)
 
-    return sf_stack_avg - opt_sf_proc
+    return sf_stack_avg - opt_sf
 
 
 def subgrid_rect_obj(lon_llc, lat_llc):
@@ -522,6 +515,17 @@ def rmse_month_global(prior_flux, true_flux, sfs, ocean_mask, lon, lat, month):
 def rmse_all_months(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
     """
     Find global RMSE for each individual month of a given scale factor set.
+
+    Parameters:
+        prior_flux (numpy arr) : processed monthly prior fluxes
+        true_flux  (numpy arr) : processed monthly true fluxes
+        sfs        (numpy arr) : obtained scale factors
+        ocean_mask (numpy arr) : indices of ocean grid cells
+        lon        (numpy arr) : longitude array (72)
+        lat        (numpy arr) : longitude array (46)
+
+    Returns:
+        list of rmse's, one float for each month
     """
     monthly_rmse = [None] * sfs.shape[0]
 
@@ -537,3 +541,56 @@ def rmse_all_months(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
         )
 
     return monthly_rmse
+
+
+"""
+Computation with GOSAT observations
+"""
+
+
+def lon_lat_to_IJ(lon, lat, lon_size=5, lat_size=4):
+    """
+    Transform (lon, lat) coordinates to 4x5 grid
+
+    Parameters:
+        lon      (float) : longitude
+        lat      (float) : latitude
+        lon_size (int)   : number of degrees in lon grid
+                           default is 5
+        lat_size (int)   : number of degress in lat grid
+                           default is 4
+
+    Returns:
+        (I, J) longitude/latitude coordinates
+
+    NOTES:
+    - this code is copied from the ./code/modified/grid_mod.f
+      - the primary difference is that python arrays are indexed from 0
+    """
+    LON_idx = int((lon + 180) / lon_size + .5)
+    LAT_idx = int((lat + 90) / lat_size + .5)
+
+    if LON_idx >= 72:
+        LON_idx = LON_idx - 72
+
+    return LON_idx, LAT_idx
+
+
+def num_region_obs(count_arr, lon_idxs, lat_idxs):
+    """
+    Given lon/lat indices and array of GOSAT counts, determine number of
+    observations in the region as defined by the indices.
+
+    Parameters:
+        count_arr (np arr) : array of counts (Mx72x46), M num months
+        lon_idxs  (np arr) : array of longitude indices
+        lat_idxs  (np arr) : array of latitude indices
+
+    Returns:
+        numpy array of counts per month
+    """
+    return count_arr[
+        :,
+        lon_idxs[0]:lon_idxs[-1],
+        lat_idxs[0]:lat_idxs[-1]
+    ].sum(axis=1).sum(axis=1)
