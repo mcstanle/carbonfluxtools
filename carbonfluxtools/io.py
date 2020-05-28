@@ -179,7 +179,7 @@ def create_netcdf_flux_file(
     write_loc,
     lon, lat, lev, time, co2_vals,
     co2_field_nm='CO2_SRCE_CO2bf',
-    dims=(72, 46, 72, 8)
+    dims=(72, 46, 8)
 ):
     """
     Create a netcdf file for a single time instance of flux
@@ -190,10 +190,9 @@ def create_netcdf_flux_file(
         write_loc    (str)    : file path destination
         lon          (np arr) :
         lat          (np arr) :
-        lev          (np arr) : atmosphere levels
         co2_vals     (np arr) : T x Lon x Lat array
         co2_field_nm (str)    : name of co2 field in the netcdf file
-        dims         (tuple)  : lon/lat/lev/time array size tuple
+        dims         (tuple)  : lon/lat/time array size tuple
 
     Returns:
         None - writes netcdf file to path specified in write_loc
@@ -206,19 +205,16 @@ def create_netcdf_flux_file(
     # create dimensions
     f.createDimension('lon', dims[0])
     f.createDimension('lat', dims[1])
-    f.createDimension('lev', dims[2])
-    f.createDimension('time', dims[3])
+    f.createDimension('time', dims[2])
 
     # build variables
     longitude = f.createVariable('Longitude', 'f4', 'lon')
     latitude = f.createVariable('Latitude', 'f4', 'lat')
-    levels = f.createVariable('Levels', 'f4', 'lev')
     co2_srce = f.createVariable(co2_field_nm, 'f4', ('time', 'lon', 'lat'))
 
     # passing data into variables
     longitude[:] = lon
     latitude[:] = lat
-    levels[:] = lev
     co2_srce[:, :, :] = co2_vals
 
     # close the dataset
@@ -228,7 +224,7 @@ def create_netcdf_flux_file(
 def generate_nc_files(
     bpch_files, output_dir, tracer_path, diag_path,
     co2_var_nm='CO2_SRCE_CO2bf',
-    dims=(72, 46, 72, 8)
+    dims=(72, 46, 8)
 ):
     """
     Creates one netcdf file for each binary punch file path provided in
@@ -245,7 +241,7 @@ def generate_nc_files(
         tracer_path (str) : path to tracer file
         diag_path   (str) : path to diag file
         co2_var_nm  (str) : name of co2 variable of interest
-        dims         (tuple)  : lon/lat/lev/time array size tuple
+        dims         (tuple)  : lon/lat/time array size tuple
 
     Returns:
         None - write netcdf file to path in output_file
@@ -266,14 +262,13 @@ def generate_nc_files(
     # extract non-time dependent info from first bpch file
     lon = bpch_data.variables['lon'].values
     lat = bpch_data.variables['lat'].values
-    lev = bpch_data.variables['lev'].values
     time = bpch_data.variables['time'].values
     co2_arr = bpch_data.variables[co2_var_nm].values
 
     # create time indices to extract each day
     time_idxs = np.arange(
-        0, dims[3] * len(output_file_nms)
-    ).reshape(len(output_file_nms), dims[3])
+        0, dims[2] * len(output_file_nms)
+    ).reshape(len(output_file_nms), dims[2])
 
     # create netcdf files
     for time_count, file_nm in enumerate(output_file_nms):
@@ -286,7 +281,6 @@ def generate_nc_files(
             write_loc=file_nm,
             lon=lon,
             lat=lat,
-            lev=lev,
             time=time[time_idx],
             co2_vals=co2_arr[time_idx, :, :],
             co2_field_nm=co2_var_nm
