@@ -177,7 +177,7 @@ def get_regional_info(geo_dict, region_nm):
 
 def create_netcdf_flux_file(
     write_loc,
-    lon, lat, lev, time, co2_vals,
+    lon, lat, time, co2_vals,
     co2_field_nm='CO2_SRCE_CO2bf',
     dims=(72, 46, 8)
 ):
