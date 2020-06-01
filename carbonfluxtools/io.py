@@ -6,7 +6,7 @@ A collection of IO related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 26, 2020
+Modified : June 1, 2020
 
 ================================================================================
 """
@@ -371,6 +371,72 @@ def read_flux_files(
     )
 
     return fluxes
+
+
+def generate_txt_files(
+    bpch_files, output_dir, tracer_path, diag_path,
+    co2_var_nm='CO2_SRCE_CO2bf',
+    dims=(8, 72, 46)
+):
+    """
+    Creates one txt file for each binary punch file path provided in
+    bpch_files. The expected dimension of each day's flux file is shown in
+    the "dims" variable.
+
+    When flattening arrays, the indices move fastest on the right side,
+    so, latitidue is moving the fastest, followed by longitude, followed by
+    time.
+
+    e.g.
+     input  - [nep.geos.4x5.001, nep.geos.4x5.002] <- bpch files
+     output = [nep.geos.4x5.001, nep.geos.4x5.002] <- txt files
+
+    Parameters:
+        bpch_files  (str) : an ordered sequential collection of daily
+                            bpch files
+        output_dir  (str) : output directory for netcdf files
+        tracer_path (str) : path to tracer file
+        diag_path   (str) : path to diag file
+        co2_var_nm  (str) : name of co2 variable of interest
+        dims         (tuple)  : lon/lat/time array size tuple
+
+    Returns:
+        None - write txt file to path in output_file
+    """
+    # read in the binary punch files
+    bpch_data = xbpch.open_mfbpchdataset(
+        bpch_files,
+        dask=True,
+        tracerinfo_file=tracer_path,
+        diaginfo_file=diag_path
+    )
+
+    # extract the array from the above
+    bpch_arr = bpch_data[co2_var_nm].values
+
+    # create new output file names
+    output_file_nms = [
+        output_dir + '/' + fp.split('/')[-1] for fp in bpch_files
+    ]
+
+    # create time indices to extract each day
+    time_idxs = np.arange(
+        0, dims[0] * len(output_file_nms)
+    ).reshape(len(output_file_nms), dims[0])
+
+    # for each output file name, generate a new text file
+    for time_count, output_file_nm in enumerate(output_file_nms):
+
+        # find the time indices for this file
+        time_idx = time_idxs[time_count, :]
+
+        # create a flattened version of the above data with the time filter
+        data_flat = bpch_arr[time_idx, :, :].flatten()
+
+        assert data_flat.shape == dims
+
+        # write to file
+        np.savetxt(fname=output_file_nm, X=data_flat)
 
 
 def find_time_idxs(start, end, fluxes):

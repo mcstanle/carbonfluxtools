@@ -353,7 +353,8 @@ def region_sf_iters(lon_idx, lat_idx, sf_arr, lon, lat):
 def create_monthly_flux(
     flux_xbpch,
     flux_var_nm,
-    agg_type='mean'
+    agg_type='mean',
+    month_list=['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep']
 ):
     """
     Given an xbpch object of fluxes, create an aggregated monthly form of the
@@ -372,7 +373,7 @@ def create_monthly_flux(
     - fluxes are expected to have form {time}x{lon}x{lat}
     """
     # create monthly indices
-    month_idxs = io.find_month_idxs(fluxes=flux_xbpch)
+    month_idxs = io.find_month_idxs(fluxes=flux_xbpch, month_list=month_list)
 
     fluxes_agg_raw = []
 
@@ -387,13 +388,17 @@ def create_monthly_flux(
             fluxes_agg_raw.append(
                 flux_xbpch[flux_var_nm].values[idxs, :, :].sum(axis=0)
             )
-        else:
-            raise ValueError
+        elif agg_type is None:
+            fluxes_agg_raw.append(
+                flux_xbpch[flux_var_nm].values[idxs, :, :]
+            )
 
     # concatenate the above together
-    fluxes_mean = np.stack(fluxes_agg_raw)
+    if agg_type is not None:
+        return np.stack(fluxes_agg_raw), flux_xbpch['lon'].values, flux_xbpch['lat'].values
 
-    return fluxes_mean, flux_xbpch['lon'].values, flux_xbpch['lat'].values
+    else:
+        return fluxes_agg_raw, flux_xbpch['lon'].values, flux_xbpch['lat'].values
 
 
 def posterior_sf_compute(prior_flux, sfs):
@@ -418,15 +423,83 @@ def posterior_sf_compute(prior_flux, sfs):
     return prior_flux * sfs
 
 
-def rmse_total_global(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
+def rmse_total_monthly_pre(
+    prior_flux, true_flux, sfs,
+    ocean_mask, lon, lat
+):
+    """
+    Finds the RMSE over each months for land grid points. Uses actual average
+    flux values.
+
+    Multiply every element of the month by scale factor instead of
+    multiplying monthly average.
+
+    pre refers to finding the errors before taking average over time
+
+    Parameters:
+        prior_flux (list)      : list of full prior fluxes (T x 72 x 46)
+        true_flux  (list)      : list of full true fluxes (T x 72 x 46)
+        sfs        (numpy arr) : obtained scale factors (M x 72 x 46)
+        ocean_mask (numpy arr) : indices of ocean grid cells
+        lon        (numpy arr) : longitude array (72)
+        lat        (numpy arr) : longitude array (46)
+
+    Returns:
+        list of monthly errors
+
+    NOTE:
+    - prior_flux/true_flux/sfs have dim (M, 72, 46)
+    - ocean_mask has dim (N,), where N is number of ocean grid points
+    """
+    assert len(prior_flux) == sfs.shape[0]
+    assert len(true_flux) == sfs.shape[0]
+
+    # for each month, find posterior
+    monthly_errors = []
+    month_idx = 0
+    for prior_month, truth_month in zip(prior_flux, true_flux):
+
+        # find posterior flux
+        post_month = prior_month * sfs[month_idx, :, :]
+
+        # find sq error and find average over time
+        sq_err = np.square(truth_month - post_month).mean(axis=0)
+
+        # find the weighted avg error
+        weighted_error = w_avg_flux(
+            flux_arr=sq_err[np.newaxis, :, :],
+            ocean_idxs=ocean_mask,
+            lon=lon,
+            lat=lat,
+            lon_bounds=(-180, 180),
+            lat_bounds=(-90, 90),
+            month=0
+        )
+
+        # append the above weighted error to to monthly errors
+        monthly_errors.append(np.sqrt(weighted_error))
+
+        month_idx += 1
+
+    return monthly_errors
+
+
+def rmse_total_global(
+    prior_flux, true_flux, sfs,
+    month_idx, ocean_mask, lon, lat
+):
     """
     Finds the RMSE over all months and land grid points. Uses actual average
     flux values.
 
     Parameters:
-        prior_flux (numpy arr) : processed monthly prior fluxes
-        true_flux  (numpy arr) : processed monthly true fluxes
+        # prior_flux (numpy arr) : processed monthly prior fluxes
+        # true_flux  (numpy arr) : processed monthly true fluxes
+        prior_flux (numpy arr) : full prior fluxes (T x 72 x 46)
+        true_flux  (numpy arr) : full true fluxes (T x 72 x 46)
         sfs        (numpy arr) : obtained scale factors
+        month_idx  (dict)      : for each month, provides flux indices
+                                 output from io.find_month_idxs
         ocean_mask (numpy arr) : indices of ocean grid cells
         lon        (numpy arr) : longitude array (72)
         lat        (numpy arr) : longitude array (46)
@@ -441,10 +514,10 @@ def rmse_total_global(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
     assert prior_flux.shape[0] == true_flux.shape[0]
 
     # find the posterior flux arr
-    post = posterior_sf_compute(
-        prior_flux=prior_flux,
-        sfs=sfs
-    )
+    # post = posterior_sf_compute(
+    #     prior_flux=prior_flux,
+    #     sfs=sfs
+    # )
 
     # find the gridwise squared error
     gw_sq_err = np.square(post - true_flux)
