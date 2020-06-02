@@ -431,9 +431,10 @@ def generate_txt_files(
         time_idx = time_idxs[time_count, :]
 
         # create a flattened version of the above data with the time filter
-        data_flat = bpch_arr[time_idx, :, :].flatten()
+        data_arr = bpch_arr[time_idx, :, :]
+        assert data_arr.shape == dims
 
-        assert data_flat.shape == dims
+        data_flat = data_arr.flatten()
 
         # write to file
         np.savetxt(fname=output_file_nm, X=data_flat)
