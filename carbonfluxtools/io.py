@@ -440,6 +440,63 @@ def generate_txt_files(
         np.savetxt(fname=output_file_nm, X=data_flat)
 
 
+def generate_txt_files_np(
+    flux_arr, bpch_files, output_dir,
+    dims=(8, 72, 46)
+):
+    """
+    Operates the same as generate_txt_files above, but takes a numpy array as
+    input in addition to the bpch file paths. The bpch file paths are still
+    includes so that new files names remain consistent with old formats.
+
+    Creates one txt file for each binary punch file path provided in
+    bpch_files. The expected dimension of each day's flux file is shown in
+    the "dims" variable.
+
+    When flattening arrays, the indices move fastest on the right side,
+    so, latitidue is moving the fastest, followed by longitude, followed by
+    time.
+
+    e.g.
+     input  - [nep.geos.4x5.001, nep.geos.4x5.002] <- bpch files
+     output = [nep.geos.4x5.001, nep.geos.4x5.002] <- txt files
+
+    Parameters:
+        flux_arr    (np arr) : array of fluxes to be written
+        bpch_files  (str)    : an ordered sequential collection of daily
+                               bpch files
+        output_dir  (str)    : output directory for netcdf files
+        dims        (tuple)  : lon/lat/time array size tuple
+
+    Returns:
+        None - write txt file to path in output_file
+    """
+    # create new output file names
+    output_file_nms = [
+        output_dir + '/' + fp.split('/')[-1] for fp in bpch_files
+    ]
+
+    # create time indices to extract each day
+    time_idxs = np.arange(
+        0, dims[0] * len(output_file_nms)
+    ).reshape(len(output_file_nms), dims[0])
+
+    # for each output file name, generate a new text file
+    for time_count, output_file_nm in enumerate(output_file_nms):
+
+        # find the time indices for this file
+        time_idx = time_idxs[time_count, :]
+
+        # create a flattened version of the above data with the time filter
+        data_arr = flux_arr[time_idx, :, :]
+        assert data_arr.shape == dims
+
+        data_flat = data_arr.flatten()
+
+        # write to file
+        np.savetxt(fname=output_file_nm, X=data_flat)
+
+
 def find_time_idxs(start, end, fluxes):
     """
     Find the numpy arr indices between two month indexes (counting from 0)

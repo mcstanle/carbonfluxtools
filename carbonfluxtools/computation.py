@@ -5,13 +5,14 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 22, 2020
+Modified : June 2, 2020
 
 ================================================================================
 """
 from area import area
 from carbonfluxtools import io
 import numpy as np
+from scipy import constants
 
 
 def find_bias(sf_stack, opt_sf):
@@ -67,6 +68,61 @@ def subgrid_rect_obj(lon_llc, lat_llc):
             [[lon_llc, lat_llc], lrc, urc, ulc, [lon_llc, lat_llc]]
         ]
     }
+
+
+def compute_gridded_areas(lons, lats):
+    """
+    Creates numpy array of grid areas
+
+    Parameters:
+        lons (np arr) : array of longitudes
+        lats (np arr) : array of latitudes
+
+    Returns:
+        np array of dim len(lon) x len(lat) with region areas in m^3
+    """
+    reg_areas = np.zeros(shape=(len(lons), len(lats)))
+
+    for lon_idx, lon in enumerate(lons):
+        for lat_idx, lat in enumerate(lats):
+
+            # create geo object
+            area_obj = subgrid_rect_obj(lon_llc=lon, lat_llc=lat)
+
+            # find region area
+            reg_areas[lon_idx, lat_idx] = area(area_obj)
+
+    return reg_areas
+
+
+def compute_global_flux(flux_arr, lons, lats):
+    """
+    Finds total flux over some time period of interest which is defined by the
+    array inputted.
+
+    Computes global flux in grams.
+
+    Uses Avogadro's number for particle count per mole and
+    12.0107 for grams of Carbon per mole
+
+    Parameters:
+        flux_arr (np arr) : dim Tx72x46
+        lons     (np arr) : dim 72
+        lats     (np arr) : dim 46
+
+    Returns:
+        float
+    """
+    # find the grid cell areas
+    reg_areas = compute_gridded_areas(lons=lons, lats=lats)
+
+    # array with total time counts per grid cell (in cubic meters)
+    grid_count = 1e6 * reg_areas * flux_arr.sum(axis=0)
+
+    # translate to grams for each grid cell
+    grid_grams = grid_count * 12.0107 / constants.Avogadro
+
+    return grid_grams.sum()
 
 
 def w_avg_sf(sfs_arr, lon, lat, lon_bounds, lat_bounds, month):
