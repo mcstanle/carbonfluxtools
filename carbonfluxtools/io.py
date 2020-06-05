@@ -6,7 +6,7 @@ A collection of IO related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : June 1, 2020
+Modified : June 3, 2020
 
 ================================================================================
 """
@@ -17,6 +17,7 @@ import numpy as np
 from os.path import expanduser
 import pandas as pd
 import PseudoNetCDF as pnc
+from tqdm import tqdm
 import xbpch
 
 # operational constants
@@ -463,7 +464,7 @@ def generate_txt_files_np(
 
     Parameters:
         flux_arr    (np arr) : array of fluxes to be written
-        bpch_files  (str)    : an ordered sequential collection of daily
+        bpch_files  (list)   : an ordered sequential collection of daily
                                bpch files
         output_dir  (str)    : output directory for netcdf files
         dims        (tuple)  : lon/lat/time array size tuple
@@ -495,6 +496,24 @@ def generate_txt_files_np(
 
         # write to file
         np.savetxt(fname=output_file_nm, X=data_flat)
+
+
+def read_flux_txt_files(flux_files):
+    """
+    Utility to read flux files of the type created by generate_txt_files.
+    In particular, these are arrays with shape 8x72x46, where the indices are
+    moving fastest to slowest right to left.
+
+    Parameters:
+        flux_files (list) : sequential list of files to read
+    """
+    flux_arrs = []
+    for file_nm in tqdm(flux_files):
+        flux_arrs.append(
+            np.loadtxt(file_nm).reshape(8, 72, 46)
+        )
+
+    return np.concatenate(flux_arrs)
 
 
 def find_time_idxs(start, end, fluxes):
