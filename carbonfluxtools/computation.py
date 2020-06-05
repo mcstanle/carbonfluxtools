@@ -480,7 +480,7 @@ def posterior_sf_compute(prior_flux, sfs):
 
 
 def rmse_total_monthly_pre(
-    prior_flux, true_flux, sfs,
+    prior_flux, true_flux, sfs, month_idxs,
     ocean_mask, lon, lat
 ):
     """
@@ -493,9 +493,10 @@ def rmse_total_monthly_pre(
     pre refers to finding the errors before taking average over time
 
     Parameters:
-        prior_flux (list)      : list of full prior fluxes (T x 72 x 46)
-        true_flux  (list)      : list of full true fluxes (T x 72 x 46)
+        prior_flux (nump arry) : array of full prior fluxes (T x 72 x 46)
+        true_flux  (nump arry) : array of full true fluxes (T x 72 x 46)
         sfs        (numpy arr) : obtained scale factors (M x 72 x 46)
+        month_idxs (dict)      : key: month name, value array indices
         ocean_mask (numpy arr) : indices of ocean grid cells
         lon        (numpy arr) : longitude array (72)
         lat        (numpy arr) : longitude array (46)
@@ -504,22 +505,34 @@ def rmse_total_monthly_pre(
         list of monthly errors
 
     NOTE:
+    - T is the number of 3hr steps
     - prior_flux/true_flux/sfs have dim (M, 72, 46)
     - ocean_mask has dim (N,), where N is number of ocean grid points
     """
-    assert len(prior_flux) == sfs.shape[0]
-    assert len(true_flux) == sfs.shape[0]
+    # defin the sequential list of months
+    month_list = [
+        'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+        'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+    ]
 
     # for each month, find posterior
     monthly_errors = []
     month_idx = 0
-    for prior_month, truth_month in zip(prior_flux, true_flux):
+    for idx, month_nm in enumerate(month_list):
 
-        # find posterior flux
-        post_month = prior_month * sfs[month_idx, :, :]
+        if month_nm not in month_idxs:
+            break
+
+        # get the month indices
+        month_idxs_idx = month_idxs[month_nm]
+
+        # find posterior flux (T_i x 72 x 46) X (72 x 46)
+        post_month = prior_flux[month_idxs_idx, :, :] * sfs[month_idx, :, :]
 
         # find sq error and find average over time
-        sq_err = np.square(truth_month - post_month).mean(axis=0)
+        sq_err = np.square(
+            true_flux[month_idxs_idx, :, :] - post_month
+        ).mean(axis=0)
 
         # find the weighted avg error
         weighted_error = w_avg_flux(
