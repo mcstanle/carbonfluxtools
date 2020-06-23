@@ -5,7 +5,7 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : June 2, 2020
+Modified : June 22, 2020
 
 ================================================================================
 """
@@ -736,3 +736,106 @@ def num_region_obs(count_arr, lon_idxs, lat_idxs):
         lon_idxs[0]:lon_idxs[-1],
         lat_idxs[0]:lat_idxs[-1]
     ].sum(axis=1).sum(axis=1)
+
+
+"""
+Computation of analytic optimal scale factors
+
+There are two varieties referred to as follows...
+1. Inner (take square differences over all time/grid points and then average)
+2. Outer (take average difference and then square over all grid points)
+"""
+
+
+def optimal_sfs_1m(prior_flux, true_flux, land_idx, outer=False):
+    """
+    For a single month, finds the optimal scale factor for land grid points
+
+    Inner Cost function refers to the one where every 3hr time step square
+    error is considered
+
+    Outer Cost function refers to the one where all errors are summed and
+    then squared
+
+    Parameters:
+        prior_flux (np arr) : Tx72x46 array
+        true_flux  (np arr) : Tx72x46 array
+        land_idx   (np arr) : 1D array with indices of 72*46 array that
+                              are land
+        outer      (bool)   : switch to optimize the outer vs. inner cost
+                              function
+
+    Returns:
+        np array 72x46 with optimized scale factors in the land indices
+    """
+    # get time step constant
+    T = prior_flux.shape[0]
+    N = 72 * 46
+
+    # reshape arrays to be Tx(72*46)
+    prior_flux_rs = prior_flux.reshape(T, N)
+    true_flux_rs = true_flux.reshape(T, N)
+
+    # instantiate default one scale factors
+    opt_sfs = np.ones(N)
+
+    for idx in np.arange(0, N):
+
+        # skip non land areas
+        if idx not in land_idx:
+            continue
+
+        # find optimal scale factor
+        if outer:
+            opt_sfs[idx] = np.sum(true_flux_rs[:, idx]) / np.sum(prior_flux_rs[:, idx])
+
+        else:
+            opt_sfs[idx] = np.sum(
+                prior_flux_rs[:, idx] * true_flux_rs[:, idx]
+            ) / np.sum(np.square(prior_flux_rs[:, idx]))
+
+    # reshape back to spatial grid for output
+    return opt_sfs.reshape(72, 46)
+
+
+def optimal_sfs_allm(prior_flux, true_flux, land_idx, month_idx, outer=False):
+    """
+    Finds optimal scale factors for all months by extending optimal_sfs_1m.
+
+    M := 3hr time steps
+    N := number of months
+
+    Parameters:
+        Parameters:
+        prior_flux (np arr) : Mx72x46 array
+        true_flux  (np arr) : Mx72x46 array
+        land_idx   (np arr) : 1D array with indices of 72*46 array that
+                              are land
+        month_idx  (dict)   : keys are month names values are time indices
+        outer      (bool)   : switch to optimize the outer vs. inner cost
+                              function
+
+    Returns:
+        np array Nx72x46 with optimized scale factors in the land indices
+    """
+    # initialize array to hold optimized values
+    opt_sfs = np.ones((len(month_idx), 72, 46))
+
+    month_count = 0
+    for month_nm, month_idxs in month_idx.items():
+
+        # find the monthly fluxes
+        prior_month = prior_flux[month_idxs, :, :]
+        true_month = true_flux[month_idxs, :, :]
+
+        # find the optimal sfs
+        opt_sfs[month_count, :, :] = optimal_sfs_1m(
+            prior_flux=prior_month,
+            true_flux=true_month,
+            land_idx=land_idx,
+            outer=outer
+        )
+
+        month_count += 1
+
+    return opt_sfs
