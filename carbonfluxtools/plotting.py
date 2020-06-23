@@ -128,6 +128,9 @@ def bw_plot(
         text_h_offset (float)  : count labels - horizonal offset
         text_v_offset (float)  : count labels - vertical offset
 
+    Returns:
+        - matplotlib figure and axis objects for plotting additional items
+
     Note:
     - expects to only be given Jan through Aug
     """
@@ -137,14 +140,14 @@ def bw_plot(
         'Sep', 'Oct', 'Nov', 'Dec'
     ]
 
-    plt.figure(figsize=(12.5, 7))
+    fig, ax = plt.subplots(1, 1, figsize=(12.5, 7))
 
-    plt.boxplot(sf_arr[:, :num_months])
+    ax.boxplot(sf_arr[:, :num_months])
 
     # find the mean scale factors for each month
     sf_mean = sf_arr[:, :num_months].mean(axis=0)
 
-    plt.scatter(
+    ax.scatter(
         np.arange(1, num_months + 1),
         opt_sf_arr[:num_months, lon_idx, lat_idx],
         color='red', label='Optimal Scale Factors'
@@ -152,28 +155,29 @@ def bw_plot(
 
     # labels
     if title:
-        plt.title(title)
-    plt.xlabel('Months')
-    plt.ylabel('Scale Factors')
+        ax.set_title(title)
+    ax.set_xlabel('Months')
+    ax.set_ylabel('Scale Factors')
 
-    plt.xticks(np.arange(1, 10), MONTH_LIST[:num_months])
+    ax.set_xticks(np.arange(1, 10), MONTH_LIST[:num_months])
 
     if num_obs is not None:
 
         # add the text with the observation count
         for month_idx in range(num_months):
-            plt.text(
+            ax.text(
                 x=month_idx+1 + text_h_offset,
                 y=sf_mean[month_idx] + text_v_offset,
                 s=str(num_obs[month_idx])
             )
 
-    plt.legend(loc='best')
-    plt.tight_layout()
+    ax.legend(loc='best')
+    ax.tight_layout()
 
     if save_loc:
         plt.savefig(save_loc)
-    plt.show()
+
+    return fig, ax
 
 
 def bw_region_plot(
@@ -197,6 +201,9 @@ def bw_region_plot(
         text_h_offset (float) : count labels - horizonal offset
         text_v_offset (float) : count labels - vertical offset
 
+    Returns:
+        figure and axes matplotlib objects
+
     Note:
     - expects to only be given Jan through Aug
     """
@@ -206,39 +213,41 @@ def bw_region_plot(
         'Sep', 'Oct', 'Nov', 'Dec'
     ]
 
-    plt.figure(figsize=(12.5, 7))
-    plt.boxplot(sf_arr[:, :num_months])
+    fig, ax = plt.subplots(1, 1, figsize=(12.5, 7))
+    ax.boxplot(sf_arr[:, :num_months])
 
     # find the mean scale factors for each month
     sf_mean = sf_arr[:, :num_months].mean(axis=0)
 
-    plt.scatter(np.arange(1, num_months+1), opt_sf_arr[:num_months],
-                color='red', label='Optimal Scale Factors')
+    ax.scatter(np.arange(1, num_months+1), opt_sf_arr[:num_months],
+               color='red', label='Optimal Scale Factors')
 
     # labels
     if title:
-        plt.title(title)
-    plt.xlabel('Months')
-    plt.ylabel('Scale Factors')
+        ax.set_title(title)
+    ax.set_xlabel('Months')
+    ax.set_ylabel('Scale Factors')
 
-    plt.xticks(np.arange(1, num_months+2), MONTH_LIST[:num_months])
+    ax.set_xticks(np.arange(1, num_months+2))
+    ax.set_xticklabels(MONTH_LIST[:num_months])
 
     if num_obs is not None:
 
         # add the text with the observation count
         for month_idx in range(num_months):
-            plt.text(
+            ax.text(
                 x=month_idx+1 + text_h_offset,
                 y=sf_mean[month_idx] + text_v_offset,
                 s=str(num_obs[month_idx])
             )
 
-    plt.legend(loc='best')
-    plt.tight_layout()
+    ax.legend(loc='best')
+    fig.tight_layout()
 
     if save_loc:
         plt.savefig(save_loc)
-    plt.show()
+
+    return fig, ax
 
 
 def plot_month_sfs(sf_arr, lon, lat, write_loc=None):
