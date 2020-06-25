@@ -5,7 +5,7 @@ A collection of basic plotting tools including
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : May 12, 2020
+Modified : June 24, 2020
 
 ================================================================================
 """
@@ -172,7 +172,7 @@ def bw_plot(
             )
 
     ax.legend(loc='best')
-    ax.tight_layout()
+    fig.tight_layout()
 
     if save_loc:
         plt.savefig(save_loc)

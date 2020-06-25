@@ -5,7 +5,7 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : June 23, 2020
+Modified : June 24, 2020
 
 ================================================================================
 """
