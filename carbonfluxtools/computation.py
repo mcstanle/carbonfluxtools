@@ -5,7 +5,7 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : June 22, 2020
+Modified : June 23, 2020
 
 ================================================================================
 """
@@ -757,6 +757,10 @@ def optimal_sfs_1m(prior_flux, true_flux, land_idx, outer=False):
     Outer Cost function refers to the one where all errors are summed and
     then squared
 
+    NOTE - 
+    - to take care of infinite values, whenever there is a 0 in the
+      denominator, we simply return a 0
+
     Parameters:
         prior_flux (np arr) : Tx72x46 array
         true_flux  (np arr) : Tx72x46 array
@@ -787,12 +791,26 @@ def optimal_sfs_1m(prior_flux, true_flux, land_idx, outer=False):
 
         # find optimal scale factor
         if outer:
-            opt_sfs[idx] = np.sum(true_flux_rs[:, idx]) / np.sum(prior_flux_rs[:, idx])
+
+            # find the denominator
+            den_val = np.sum(prior_flux_rs[:, idx])
+
+            if den_val == 0:
+                opt_sfs[idx] = 1
+            else:
+                opt_sfs[idx] = np.sum(true_flux_rs[:, idx]) / den_val
 
         else:
-            opt_sfs[idx] = np.sum(
-                prior_flux_rs[:, idx] * true_flux_rs[:, idx]
-            ) / np.sum(np.square(prior_flux_rs[:, idx]))
+
+            # find the denominator
+            den_val = np.sum(np.square(prior_flux_rs[:, idx]))
+
+            if den_val == 0:
+                opt_sfs[idx] = 1
+            else:
+                opt_sfs[idx] = np.sum(
+                    prior_flux_rs[:, idx] * true_flux_rs[:, idx]
+                ) / den_val
 
     # reshape back to spatial grid for output
     return opt_sfs.reshape(72, 46)
