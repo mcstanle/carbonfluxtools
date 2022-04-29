@@ -5,7 +5,7 @@ A collection of computation related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : June 24, 2020
+Modified : Oct 2, 2020
 
 ================================================================================
 """
@@ -271,6 +271,89 @@ def w_avg_flux(
 
     # divide all weighted scale factors by total area
     weighted_flux = np.array(raw_weighted_flux) / tot_area
+
+    return weighted_flux.sum()
+
+
+def w_avg_flux_variance(
+    flux_var_arr, ocean_idxs,
+    lon, lat,
+    lon_bounds, lat_bounds,
+    month
+):
+    """
+    Find the weighted avg flux variance for one time slice. The weighted
+    average only takes land grid cells into account, i.e. it skips the
+    ocean indices
+
+    Parameters:
+        flux_var_arr (numpy array) : contains sfs over lon/lat
+        ocean_idxs   (numpy array) : indices of ocean grid cells when
+                                     flattening a 72x46 array
+        lon          (numpy array) : longitudes
+        lat          (numpy array) : latitudes
+        lon_bounds   (tuple)       : eastern oriented
+        lat_bounds   (tuple)       : northern oriented
+        month        (int)         : the month of interest
+
+    Returns:
+        weighted avg of fluxes (float)
+
+    NOTES:
+    - the variable of interest in sfs is assumed to have shape (*, 72, 46)
+      where * is the number of months
+    - the bounds for lon/lat are inclusive
+    - orients each grid box so that the scale factor is in the center
+    """
+    # test array dimensions
+    assert len(flux_var_arr.shape) == 3
+    assert flux_var_arr.shape[1] == 72
+    assert flux_var_arr.shape[2] == 46
+
+    # find the lon/lat indices that correspond to the the bounds of interest
+    lon_lb = np.where(lon >= lon_bounds[0])
+    lon_ub = np.where(lon <= lon_bounds[1])
+    lon_idxs = np.intersect1d(lon_lb, lon_ub)
+
+    lat_lb = np.where(lat >= lat_bounds[0])
+    lat_ub = np.where(lat <= lat_bounds[1])
+    lat_idxs = np.intersect1d(lat_lb, lat_ub)
+
+    # make reference array for lat/lon indices
+    ref_arr = np.arange(46*72).reshape((72, 46))
+
+    # compute areas
+    areas = []
+    raw_weighted_flux_var = []
+    for lat_idx in lat_idxs:
+        for lon_idx in lon_idxs:
+
+            # check if reference array index is in the ocean mask
+            if ref_arr[lon_idx, lat_idx] in ocean_idxs:
+                continue
+
+            # get the lower right corner endpoints of the box
+            lon_lrc = lon[lon_idx] - 2.5
+            lat_lrc = lat[lat_idx] - 2
+
+            # find area
+            grid_area = area(subgrid_rect_obj(lon_lrc, lat_lrc))
+
+            # get the fluxes
+            grid_flux = flux_var_arr[month, lon_idx, lat_idx]
+
+            # compute the weighted fluxes
+            w_flux_var = np.square(grid_area) * grid_flux
+
+            # store data
+            areas.append(grid_area)
+            raw_weighted_flux_var.append(w_flux_var)
+
+    # find the total area
+    tot_area = np.array(areas).sum()
+
+    # divide all weighted scale factors by total area
+    weighted_flux = np.array(raw_weighted_flux_var) / np.square(tot_area)
 
     return weighted_flux.sum()
 
@@ -685,6 +768,53 @@ def rmse_all_months(prior_flux, true_flux, sfs, ocean_mask, lon, lat):
     return monthly_rmse
 
 
+def rmse_w(flux1, flux2, ocean_mask, lon, lat):
+    """
+    RMSE but weighted by grid areas.
+
+    Designed to take whole 3hr flux arrays!
+
+    First take the square different at each grid cell over time,
+    then average over time and multiply each grid cell by a weight
+    which is proportional to its weight with respect to all grid
+    areas. Then add and take square root.
+
+    T := # 3hr time steps
+    N := number of longitude cuts
+    M := number of latitude cuts
+    P := number of ocean grid cells
+
+    Parameters:
+        flux1      (np arr) : (T, N, M)
+        flux2      (np arr) : (T, N, M)
+        ocean_mask (np arr) : (P,)
+        lon        (np arr) : (N,)
+        lat        (np arr) : (M,)
+
+    Returns:
+        sqrt(weighted error) (float)
+
+    """
+    # find square difference across space and time
+    sq_diff = np.square(flux1 - flux2)
+
+    # average over time
+    sq_diff_ta = sq_diff.mean(axis=0)
+
+    # find the error weighted by area
+    weighted_error = w_avg_flux(
+        flux_arr=sq_diff_ta[np.newaxis, :, :],
+        ocean_idxs=ocean_mask,
+        lon=lon,
+        lat=lat,
+        lon_bounds=(-180, 180),
+        lat_bounds=(-90, 90),
+        month=0
+    )
+
+    return np.sqrt(weighted_error)
+
+
 """
 Computation with GOSAT observations
 """
@@ -757,7 +887,7 @@ def optimal_sfs_1m(prior_flux, true_flux, land_idx, outer=False):
     Outer Cost function refers to the one where all errors are summed and
     then squared
 
-    NOTE - 
+    NOTE -
     - to take care of infinite values, whenever there is a 0 in the
       denominator, we simply return a 0
 

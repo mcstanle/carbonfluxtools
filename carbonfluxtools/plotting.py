@@ -5,7 +5,7 @@ A collection of basic plotting tools including
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : June 24, 2020
+Modified : December 3, 2021
 
 ================================================================================
 """
@@ -14,7 +14,8 @@ import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
 from matplotlib import colors
 import numpy as np
-plt.style.use('ggplot')
+# plt.style.use('ggplot')
+plt.style.use('seaborn-colorblind')
 
 
 def plot_single_loc(lon_pt, lat_pt, extent_lst,
@@ -61,9 +62,10 @@ def plot_single_loc(lon_pt, lat_pt, extent_lst,
     plt.show()
 
 
-def plot_region_dots(lon_pts, lat_pts, extent_lst,
-                     lon, lat, save_loc=None, title=None
-                     ):
+def plot_region_dots(
+    lon_pts, lat_pts, extent_lst,
+    lon, lat, save_loc=None, title=None, point_size=None
+):
     """
     Plot an entire region
 
@@ -71,10 +73,11 @@ def plot_region_dots(lon_pts, lat_pts, extent_lst,
         lon_pts     (int)    : longitude idxs
         lat_pts     (int)    : latitude idxs
         extent_lst  (list)   : plotting region
-        lon        (np arr) : array of longitudes
-        lat        (np arr) : array of latitudes
-        save_loc   (str)    : save location of plot (default None)
-        title      (str)    : title for plot if given
+        lon         (np arr) : array of longitudes
+        lat         (np arr) : array of latitudes
+        save_loc    (str)    : save location of plot (default None)
+        title       (str)    : title for plot if given
+        point_size  (float)  : size of plot points
 
     Returns:
         matplotlib plot save if location give
@@ -85,8 +88,13 @@ def plot_region_dots(lon_pts, lat_pts, extent_lst,
     ax = fig.add_subplot(111, projection=ccrs.PlateCarree(), aspect='auto')
 
     for lat_ in lat_pts:
-        ax.scatter([lon[i] for i in lon_pts], [lat[lat_]] * len(lon_pts),
-                   transform=ccrs.PlateCarree(), color='red')
+        ax.scatter(
+            [lon[i] for i in lon_pts],
+            [lat[lat_]] * len(lon_pts),
+            transform=ccrs.PlateCarree(),
+            color='red',
+            s=point_size if point_size else None
+        )
 
     ax.add_feature(cfeature.COASTLINE)
     ax.add_feature(cfeature.LAND)

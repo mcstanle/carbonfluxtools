@@ -6,7 +6,7 @@ A collection of IO related functions to support
 
 Author   : Mike Stanley
 Created  : May 12, 2020
-Modified : June 3, 2020
+Modified : March 29, 2022
 
 ================================================================================
 """
@@ -635,6 +635,45 @@ def read_cfn_files(file_dir):
 """
 IO WITH GOSAT OBSERVATIONS
 """
+
+
+def get_ij(lon, lat, disize=5, djsize=4, iipar=72, jjpar=46):
+    """
+    Given a lon/lat, returns the corresponding grid coordinate for 4x5 grid.
+
+    NOTE:
+    1. This function is essentially copied from GET_IJ in
+       /code/modified/grid_mod.f
+    2. d(i/j)size are default as noted in /code/CMN_SIZE
+    3. (ii/jj)par_l are default as noted in /code/CMN_SIZE for 4x5 grid
+    4. Be aware that I changed some of the indexing since fortran indexes from 1
+
+    Parameters:
+        lon    (float) : longitude
+        lat    (float) : latitude
+        disize (float) : size (in degree) of a longitude grid box
+        djsize (float) : size (in degree) of a longitude grid box
+        iipar  (int)   : limit of longitude index
+        jjpar  (int)   : limit of latitude index
+
+    Returns:
+        tlon, tlat (longitude grid coord, latitude grid coord)
+    """
+    tlon = int((lon + 180.) / disize + 0.5)
+    tlat = int((lat + 90.) / djsize + 0.5)
+
+    if tlon >= iipar:
+        tlon -= iipar
+
+    # if tlat > jjpar:
+    #     tlat -= jjpar
+
+    # check for impossible points
+    if (tlon >= iipar) | (tlat >= jjpar) | (tlon < 0) | (tlat < 0):
+        print(tlon, tlat)
+        raise ValueError
+
+    return int(tlon), int(tlat)
 
 
 def read_gosat_data(fp):
