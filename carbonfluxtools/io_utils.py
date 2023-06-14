@@ -14,15 +14,15 @@ from glob import glob
 import json
 import netCDF4 as nc4
 import numpy as np
-from os.path import expanduser
 import pandas as pd
 import PseudoNetCDF as pnc
 from tqdm import tqdm
 import xbpch
 
 # operational constants
-BASE_DIR = expanduser('~') + '/Research/Carbon_Flux'
-COLUMN_LIST_FP = BASE_DIR + '/data/gosat_meta_data/gosat_columns.txt'
+# BASE_DIR = expanduser('~') + '/Research/Carbon_Flux'
+# COLUMN_LIST_FP = BASE_DIR + '/data/gosat_meta_data/gosat_columns.txt'
+COLUMN_LIST_FP = './gosat_columns.txt'
 
 
 def read_sf_objs(base_df_dir, sf_prefix):
@@ -646,7 +646,7 @@ def get_ij(lon, lat, disize=5, djsize=4, iipar=72, jjpar=46):
        /code/modified/grid_mod.f
     2. d(i/j)size are default as noted in /code/CMN_SIZE
     3. (ii/jj)par_l are default as noted in /code/CMN_SIZE for 4x5 grid
-    4. Be aware that I changed some of the indexing since fortran indexes from 1
+    4. I changed some of the indexing since fortran indexes from 1
 
     Parameters:
         lon    (float) : longitude
