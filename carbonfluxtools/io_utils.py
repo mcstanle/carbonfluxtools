@@ -14,6 +14,7 @@ from glob import glob
 import json
 import netCDF4 as nc4
 import numpy as np
+import os
 import pandas as pd
 import PseudoNetCDF as pnc
 from tqdm import tqdm
@@ -22,7 +23,8 @@ import xbpch
 # operational constants
 # BASE_DIR = expanduser('~') + '/Research/Carbon_Flux'
 # COLUMN_LIST_FP = BASE_DIR + '/data/gosat_meta_data/gosat_columns.txt'
-COLUMN_LIST_FP = './gosat_columns.txt'
+dir_path = os.path.dirname(os.path.realpath(__file__))
+COLUMN_LIST_FP = dir_path + '/gosat_columns.txt'
 
 
 def read_sf_objs(base_df_dir, sf_prefix):
