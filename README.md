@@ -9,7 +9,7 @@ To install, clone this repository and run
 
 ## Functionality
 There are currently two available sub-modules
-1. `carbonfluxtools.io`
+1. `carbonfluxtools.io_utils`
 2. `carbonfluxtools.computation`
 3. `carbonfluxtools.plotting`
 
